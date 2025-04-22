@@ -18,7 +18,7 @@ export const AppContextProvider = (props) => {
     const { user } = useUser()
 
     const [allCourses, setAllCourses] = useState([])
-    const [isEducator, setisEducator] = useState(false)
+    const [isEducator, setIsEducator] = useState(false)
     const [enrolledCourses, setEnrolledCourses] = useState([])
     const [userData, setUserData] = useState(null)
 
@@ -36,12 +36,17 @@ export const AppContextProvider = (props) => {
     }
 
     const fetchUserData = async () => {
+        if (!user) return;
+    
         if (user.publicMetadata.role === 'educator') {
-            setisEducator(true)
+            setIsEducator(true)
         }
+    
+        const token = await getToken()
+        if (!token) return;
+    
         try {
-            const token = await getToken();
-            const { data } = await axios.get(backendUrl + 'api/user/data', {
+            const { data } = await axios.get(backendUrl + '/api/user/data', {
                 headers: { Authorization: `Bearer ${token}` }
             })
             if (data.success) {
@@ -50,9 +55,10 @@ export const AppContextProvider = (props) => {
                 toast.error(data.message)
             }
         } catch (error) {
-            toast.error(error.message)
+            toast.error(error.response?.data?.message || error.message)
         }
     }
+    
 
     // ✅ FIXED: Added null/undefined/array check to avoid crash
     const calculateRating = (course) => {
@@ -90,8 +96,11 @@ export const AppContextProvider = (props) => {
     }
 
     const fetchUserEnrolledCourses = async () => {
+        if (!user) return;
+        const token = await getToken()
+        if (!token) return;
+    
         try {
-            const token = await getToken();
             const { data } = await axios.get(backendUrl + '/api/user/enrolled-courses', {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -101,33 +110,32 @@ export const AppContextProvider = (props) => {
                 toast.error(data.message)
             }
         } catch (error) {
-            toast.error(error.message)
+            toast.error(error.response?.data?.message || error.message)
         }
     }
+    
 
     useEffect(() => {
         fetchAllCourses()
     }, [])
 
-    const logToken = async ()=>{
-        console.log(await getToken());
-    }
+
 
     useEffect(() => {
         if (user) {
-            // fetchUserData()
-            // fetchUserEnrolledCourses()
-            logToken()
+            fetchUserData()
+            fetchUserEnrolledCourses()
         }
     }, [user])
+    
 
     const value = {
         currency,
         allCourses,
         navigate,
-        calculateRating, // ✅ updated function is now safe
+        calculateRating, 
         isEducator,
-        setisEducator,
+        setIsEducator,
         calculateNoOfLectures,
         calculateCourseDuration,
         calculateChapterTime,

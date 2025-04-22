@@ -13,7 +13,7 @@ const CourceDetails = () => {
   const { id } = useParams()
   const [courseData, setCourseData] = useState(null)
   const [openSection,setopenSection] = useState({})
-  const [isAlreadyEnrolled,setisAlreadyEnrolled] = useState(false)
+  const [isAlreadyEnrolled,setIsAlreadyEnrolled] = useState(false)
   const [playerData , setPlayerData] = useState(null)
   const { allCourses ,calculateRating,calculateNoOfLectures,calculateCourseDuration,calculateChapterTime , currency, backendUrl, userData,getToken} = useContext(AppContext)
   const fetchCourseData = async () => {
@@ -29,12 +29,13 @@ const CourceDetails = () => {
       toast.error(error.message)
     }
   }
+  
   useEffect(() => {
     fetchCourseData()
   }, [])
   useEffect(() => {
     if(userData && courseData){
-      setisAlreadyEnrolled(userData.enrollCourse.includes(courseData._id))
+      setIsAlreadyEnrolled(userData.enrolledCourses.includes(courseData._id))
     }
   }, [userData,courseData])
 
@@ -47,7 +48,7 @@ const CourceDetails = () => {
         return toast.warn('Already Enrolled')
       }
       const token = await getToken()
-      const {data} = await axios.post(backendUrl+'api/user/purchase',{courseId:courseData._id},{headers:{Authorization: `Bearer ${token}`}})
+      const {data} = await axios.post(backendUrl+'/api/user/purchase',{courseId:courseData._id},{headers:{Authorization: `Bearer ${token}`}})
       if(data.success){
         const {session_url} = data
         window.location.replace(session_url)

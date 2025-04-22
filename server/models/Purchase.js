@@ -64,6 +64,6 @@ export const getEnrolledStudentsData = async(req,res)=>{
         }));
         res.json({success:true,enrolledStudents})
     } catch (error) {
-        res.json({success:false,message:error,message})
+        res.json({success:false,message:error.message})
     }
 }

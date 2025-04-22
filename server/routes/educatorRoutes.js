@@ -9,7 +9,7 @@ import { protectEducator } from '../middlewares/authMiddleware.js'
 import {
   educatorDashboardData,
   getEnrolledStudentsData
-} from '../models/Purchase.js'
+} from '../controllers/educatorController.js'
 
 const educatorRouter = express.Router()
 

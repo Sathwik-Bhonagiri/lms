@@ -30,5 +30,25 @@ export const getCourseId = async(req,res)=>{
     }
 }
 
+export const verifyPurchase = async (req, res, next) => {
+    try {
+      const purchase = await Purchase.findOne({
+        userId: req.user._id,
+        courseId: req.params.courseId,
+        status: 'completed'
+      });
+      
+      if (!purchase) {
+        return res.status(403).json({ 
+          success: false,
+          message: "Purchase required to rate this course"
+        });
+      }
+      next();
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  };
+
 
 
