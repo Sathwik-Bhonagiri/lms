@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import Course from "./Course.js";
 const PurchaseSchema = new mongoose.Schema({
     courseId:{type:mongoose.Schema.Types.ObjectId,
-        ref:'course',
+        ref:'Course',
         required:true
     },
     userId:{
@@ -43,7 +43,8 @@ export const educatorDashboardData = async (req,res)=>{
             totalEarnings,enrolledStudentsData,totalCourses
         }})
     } catch (error) {
-        res.json({success:false,message:error,message})
+        return res.status(500).json({ success: false, message: error.message });
+
     }
 }
 

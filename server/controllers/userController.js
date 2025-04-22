@@ -3,11 +3,10 @@ import { Purchase } from "../models/Purchase.js";
 import Course from "../models/Course.js";
 import Stripe from "stripe";
 import { CourseProgress } from "../models/CourseProgress.js";
-import e from "express";
 
-export const getUserData = async(requestAnimationFrame,res)=>{
+export const getUserData = async(req,res)=>{
     try {
-        const userId = requestAnimationFrame.auth.userId
+        const userId = req.auth.userId
         const user = await User.findById(userId)
         if(!user){
             return res.json({success:false,message:'User Not Found'})
@@ -46,7 +45,7 @@ export const purchaseCourse = async (req,res)=>{
         }
         const newPurchase = await Purchase.create(purchaseData)
 
-        const stripeInstance = new Stripe(process.env.STRIPR_SECRET_KEY)
+        const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
 
         const currency = process.env.CURRENCY.toLowerCase()
 
@@ -61,8 +60,8 @@ export const purchaseCourse = async (req,res)=>{
             quantity:1
         }]
         const session = await stripeInstance.checkout.sessions.create({
-            success_url:`${origin}/loading/my-enrollment`,
-            cancel_url: `${origin}`,
+            success_url:`${origin}/loading/my-enrollments`,
+            cancel_url: `${origin}/`,
             line_items: line_items,
             mode: 'payment',
             metadata:{

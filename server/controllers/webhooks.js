@@ -2,7 +2,7 @@ import { Webhook } from "svix";
 import User from "../models/User.js";
 import Stripe from "stripe";
 import { Purchase } from "../models/Purchase.js";
-import Course from "../models/Course.js";
+ import Course from "../models/Course.js";
 
 export const clerkWebhooks = async(req,res)=>{
     try{
@@ -56,7 +56,7 @@ export const stripeWebhooks = async (request,response)=>{
     const sig = request.headers['stripe-signature'];
     let event;
     try {
-        event = Stripe.Webhook.constructEvent(request.body,sig,process.env.STRIPE_WEBHOOK_SECRET);
+        event = Stripe.webhooks.constructEvent(request.body,sig,process.env.STRIPE_WEBHOOK_SECRET);
     } catch (err) {
         res.status(404).send(`Webhook Error: ${err.message}`)
     }
