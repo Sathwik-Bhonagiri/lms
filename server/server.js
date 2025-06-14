@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import { clerkMiddleware } from '@clerk/clerk-sdk-node';
 import courseRouter from './routes/course.route.js';
+import userRouter from './routes/user.route.js';
 import { getAllCourses } from './controllers/course.controller.js';
 
 dotenv.config();
@@ -12,40 +13,48 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ CORS setup
+// ✅ Step 1: Configure CORS Middleware
 const allowedOrigins = ['https://upskillify.vercel.app'];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
 
-// ✅ Middleware
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+// ✅ Step 2: Add JSON parser
 app.use(express.json());
 
-// ✅ Public route (no Clerk)
+// ✅ Step 3: Public route (without auth)
 app.get('/api/course/all', getAllCourses);
 
-// ✅ Clerk auth middleware
+// ✅ Step 4: Clerk auth middleware
 app.use(clerkMiddleware());
 
-// ✅ Protected route
+// ✅ Step 5: Protected routes
 app.use('/api/course', courseRouter);
+app.use('/api/user', userRouter);
 
-// ✅ Connect DB and start server
+// ✅ Step 6: Connect to MongoDB and run server
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   })
   .catch((error) => {
-    console.error('MongoDB connection error:', error);
+    console.error('❌ MongoDB connection error:', error);
   });
