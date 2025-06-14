@@ -11,12 +11,11 @@ import userRouter from './routes/userRoutes.js';
 
 const app = express();
 
-// Connect to databases
-await connectDB();
-await connectCloudinary();
-
-// Minimal CORS Fix - Add this at the top
-const allowedOrigins = ['https://upskillify.vercel.app', 'http://localhost:3000'];
+// 1. CORS Configuration (Must be first)
+const allowedOrigins = [
+  'https://upskillify.vercel.app',
+  'http://localhost:3000'
+];
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -27,31 +26,55 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(200).send();
   }
   
   next();
 });
 
-// Webhook handlers
+// 2. Database connections
+await connectDB();
+await connectCloudinary();
+
+// 3. Webhook handlers
 app.post('/clerk', express.raw({type: 'application/json'}), clerkWebhooks);
 app.post('/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
 
-// Body parsers
+// 4. Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/educator', clerkMiddleware(), educatorRouter);
-app.use('/api/user', clerkMiddleware(), userRouter);
+// 5. Public routes (no auth)
 app.use('/api/course', courseRouter);
 
-// Root endpoint
-app.get('/', (req, res) => res.send("API working"));
+// 6. Protected routes (require auth)
+app.use('/api/educator', clerkMiddleware(), educatorRouter);
+app.use('/api/user', clerkMiddleware(), userRouter);
 
-// Start server
+// 7. Health check endpoint
+app.get('/', (req, res) => {
+  res.json({
+    status: 'running',
+    message: 'Upskillify LMS API',
+    cors: {
+      allowedOrigins,
+      detectedOrigin: req.headers.origin || 'none',
+      isAllowed: allowedOrigins.includes(req.headers.origin)
+    }
+  });
+});
+
+// 8. Error handling
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).json({ success: false, message: 'Internal server error' });
+});
+
+// 9. Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('Allowed Origins:', allowedOrigins);
 });
