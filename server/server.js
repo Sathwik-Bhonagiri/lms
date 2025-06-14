@@ -1,46 +1,48 @@
-import express from 'express'
-import cors from 'cors'
-import 'dotenv/config'
-import connectDB from './configs/mongodb.js'
-import { clerkWebhooks, stripeWebhooks } from './controllers/webhooks.js'
-import educatorRouter from './routes/educatorRoutes.js'
-import { clerkMiddleware } from '@clerk/express'
-import connectCloudinary from './configs/cloudinary.js'
-import courseRouter from './routes/courseRoute.js'
-import userRouter from './routes/userRoutes.js'
+import express from 'express';
+import cors from 'cors';
+import 'dotenv/config';
+import connectDB from './configs/mongodb.js';
+import { clerkWebhooks, stripeWebhooks } from './controllers/webhooks.js';
+import educatorRouter from './routes/educatorRoutes.js';
+import { clerkMiddleware } from '@clerk/express';
+import connectCloudinary from './configs/cloudinary.js';
+import courseRouter from './routes/courseRoute.js';
+import userRouter from './routes/userRoutes.js';
+import { getAllCourses } from './controllers/courseController.js';
 
-const app = express()
+const app = express();
 
-await connectDB()
-await connectCloudinary()
-import cors from 'cors'
+await connectDB();
+await connectCloudinary();
 
-// Add this before routes
+// ✅ Allowed origin for CORS
 const allowedOrigins = ['https://upskillify.vercel.app'];
 
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true, // If you're using cookies or auth headers
+  credentials: true, // If you're using cookies or Authorization headers
 }));
 
-app.use(clerkMiddleware())
+// ✅ Required for JSON parsing before routing
+app.use(express.json());
 
-app.get('/',(req,res)=>res.send("api working"))
+// ✅ Public endpoints (MUST come before clerkMiddleware)
+app.get('/', (req, res) => res.send("API working"));
+app.get('/api/course/all', getAllCourses);  // Public route
 
-app.post('/clerk',express.json(),clerkWebhooks)
+// ✅ Webhooks (no Clerk)
+app.post('/clerk', express.json(), clerkWebhooks);
+app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
-app.use('/api/educator',express.json(),educatorRouter)
+// 🔐 Clerk protected endpoints (AFTER public)
+app.use(clerkMiddleware());
 
-app.use('/api/course',express.json(),courseRouter)
+app.use('/api/educator', educatorRouter);
+app.use('/api/course', courseRouter);
+app.use('/api/user', userRouter);
 
-app.use('/api/user',express.json(),userRouter)
+const PORT = process.env.PORT || 5000;
 
-app.post('/stripe',express.raw({type: 'application/json'}), stripeWebhooks)
-
-
-
-const PORT = process.env.PORT || 5000
-
-app.listen(PORT,()=>{
-    console.log(`server is running on port ${PORT}`)
-})
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
