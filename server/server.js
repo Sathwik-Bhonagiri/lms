@@ -13,7 +13,16 @@ const app = express()
 
 await connectDB()
 await connectCloudinary()
-app.use(cors())
+import cors from 'cors'
+
+// Add this before routes
+const allowedOrigins = ['https://upskillify.vercel.app'];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true, // If you're using cookies or auth headers
+}));
+
 app.use(clerkMiddleware())
 
 app.get('/',(req,res)=>res.send("api working"))
