@@ -1,46 +1,56 @@
 import express from 'express';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import cors from 'cors';
-import 'dotenv/config';
-import connectDB from './configs/mongodb.js';
-import { clerkWebhooks, stripeWebhooks } from './controllers/webhooks.js';
-import educatorRouter from './routes/educatorRoutes.js';
-import { clerkMiddleware } from '@clerk/express';
-import connectCloudinary from './configs/cloudinary.js';
-import userRouter from './routes/userRoutes.js';
-import courseRouter from './routes/courseRoute.js';
-import { getAllCourses } from './controllers/courseController.js';
+import courseRouter from './routes/course.route.js';
+import { getAllCourses } from './controllers/course.controller.js';
+import { clerkMiddleware } from '@clerk/clerk-sdk-node';
+
+dotenv.config();
 
 const app = express();
+const port = process.env.PORT || 5000;
 
-await connectDB();
-await connectCloudinary();
+// ✅ Allow requests only from your frontend
+const allowedOrigins = ['https://upskillify.vercel.app'];
 
-// ✅ CORS fix
 app.use(cors({
-  origin: ['https://upskillify.vercel.app'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like Postman) or from allowed origins
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
-// ✅ Parse JSON
+// ✅ Middleware
 app.use(express.json());
 
-// ✅ Public route (must be before Clerk middleware)
-app.get('/', (req, res) => res.send("API working"));
-app.get('/api/course/all', getAllCourses);  // ← this is key
+// ✅ Public Route — no Clerk
+app.get('/api/course/all', getAllCourses);
 
-// ✅ Webhooks
-app.post('/clerk', express.json(), clerkWebhooks);
-app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
+// ✅ Optional Test Route to Debug CORS
+app.get('/cors-test', (req, res) => {
+  res.json({ message: 'CORS is working!' });
+});
 
-// ✅ Clerk Middleware AFTER public routes
+// ✅ Clerk middleware (after public routes)
 app.use(clerkMiddleware());
 
 // ✅ Protected Routes
-app.use('/api/educator', educatorRouter);
-app.use('/api/course', courseRouter); // '/all' removed from inside this
-app.use('/api/user', userRouter);
+app.use('/api/course', courseRouter);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ✅ MongoDB Connect and Start Server
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+  });
