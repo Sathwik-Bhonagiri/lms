@@ -8,44 +8,55 @@ import { clerkMiddleware } from '@clerk/express'
 import connectCloudinary from './configs/cloudinary.js'
 import courseRouter from './routes/courseRoute.js'
 import userRouter from './routes/userRoutes.js'
-import { corsHandler } from './middlewares/corsHandler.js'
 
-// ... after cors middleware
-app.use(corsHandler)
 const app = express()
 
 await connectDB()
 await connectCloudinary()
-app.use(cors())
-app.use(clerkMiddleware())
 
-const corsOptions = {
-  origin: [
-    'https://upskillify.vercel.app', // Your frontend domain
-    'http://localhost:3000' // For local development
-  ],
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  optionsSuccessStatus: 204
-}
+// Enhanced CORS configuration
+const allowedOrigins = [
+  'https://upskillify.vercel.app',
+  'http://localhost:3000'
+];
 
-app.get('/',(req,res)=>res.send("api working"))
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
-app.post('/clerk',express.json(),clerkWebhooks)
+// Handle preflight requests
+app.options('*', cors());
 
-app.use('/api/educator', clerkMiddleware(), educatorRouter)
-app.use('/api/user', clerkMiddleware(), userRouter)
+// Clerk middleware should come AFTER CORS
+app.use(clerkMiddleware());
 
-// Keep public routes without middleware
-app.use('/api/course', courseRouter)
+// ... rest of your routes
 
-app.post('/stripe',express.raw({type: 'application/json'}), stripeWebhooks)
+app.get('/', (req, res) => res.send("API Working"));
 
-app.use(cors(corsOptions))
-app.options('*', cors(corsOptions)) // Handle preflight requests
+// Webhook handlers - must come before body parsers
+app.post('/clerk', express.raw({type: 'application/json'}), clerkWebhooks);
+app.post('/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
 
-const PORT = process.env.PORT || 5000
+// Body parsers for other routes
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.listen(PORT,()=>{
-    console.log(`server is running on port ${PORT}`)
-})
+// Your existing routes
+app.use('/api/educator', educatorRouter);
+app.use('/api/course', courseRouter);
+app.use('/api/user', userRouter);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
