@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import 'dotenv/config';
 import connectDB from './configs/mongodb.js';
 import { clerkWebhooks, stripeWebhooks } from './controllers/webhooks.js';
@@ -11,35 +10,82 @@ import userRouter from './routes/userRoutes.js';
 
 const app = express();
 
-// ✅ Connect to MongoDB and Cloudinary
+// =====================================
+// 1. CORS CONFIGURATION (MUST BE FIRST)
+// =====================================
+const allowedOrigins = [
+  'https://upskillify.vercel.app',
+  'http://localhost:3000'
+];
+
+// Main CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Set CORS headers for all responses
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, svix-id, svix-timestamp, svix-signature');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
+// =====================================
+// 2. DATABASE CONNECTIONS
+// =====================================
 await connectDB();
 await connectCloudinary();
 
-// ✅ CORS Setup
-app.use(cors({
-  origin: 'https://upskillify.vercel.app', // allow your frontend domain
-  credentials: true, // allow cookies or authorization headers
-}));
+// =====================================
+// 3. WEBHOOK HANDLERS
+// =====================================
+app.post('/clerk', express.raw({type: 'application/json'}), clerkWebhooks);
+app.post('/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
 
-// ✅ Optional: Handle preflight for all routes
-app.options('*', cors());
+// =====================================
+// 4. BODY PARSERS
+// =====================================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ✅ Middleware
-app.use(clerkMiddleware());
+// =====================================
+// 5. ROUTES WITH PROPER AUTH
+// =====================================
+// Public routes (no authentication)
+app.use('/api/course', courseRouter);
 
-// ✅ Routes
-app.get('/', (req, res) => res.send('API working'));
+// Protected routes (require authentication)
+app.use('/api/user', clerkMiddleware(), userRouter);
+app.use('/api/educator', clerkMiddleware(), educatorRouter);
 
-app.post('/clerk', express.json(), clerkWebhooks);
-app.use('/api/educator', express.json(), educatorRouter);
-app.use('/api/course', express.json(), courseRouter);
-app.use('/api/user', express.json(), userRouter);
+// =====================================
+// 6. HEALTH CHECK ENDPOINT
+// =====================================
+app.get('/', (req, res) => {
+  res.json({
+    status: 'running',
+    message: 'Upskillify LMS API',
+    cors: {
+      allowedOrigins,
+      yourOrigin: req.headers.origin,
+      isAllowed: allowedOrigins.includes(req.headers.origin)
+    }
+  });
+});
 
-// ✅ Stripe webhook requires raw body
-app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
-
-// ✅ Server listener
+// =====================================
+// 7. START SERVER
+// =====================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log('Allowed Origins:', allowedOrigins);
 });
