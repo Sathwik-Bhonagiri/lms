@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import 'dotenv/config';
 import connectDB from './configs/mongodb.js';
 import { clerkWebhooks, stripeWebhooks } from './controllers/webhooks.js';
@@ -15,76 +14,73 @@ const app = express();
 await connectDB();
 await connectCloudinary();
 
-// Critical CORS Fixes
+// Manual CORS Implementation (Bulletproof)
 const allowedOrigins = [
   'https://upskillify.vercel.app',
   'http://localhost:3000'
 ];
 
-// 1. Use CORS middleware with specific configuration
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 204
-}));
-
-// 2. Handle preflight requests globally
-app.options('*', cors());
-
-// 3. Add manual CORS headers as fallback
+// 1. Middleware to handle CORS manually
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, svix-id, svix-timestamp, svix-signature');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   next();
 });
 
-// Webhook handlers (must come before body parsers)
+// 2. Webhook handlers
 app.post('/clerk', express.raw({type: 'application/json'}), clerkWebhooks);
 app.post('/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
 
-// Body parsers
+// 3. Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Apply Clerk middleware only to protected routes
+// 4. Routes
 app.use('/api/educator', clerkMiddleware(), educatorRouter);
 app.use('/api/user', clerkMiddleware(), userRouter);
-
-// Public routes
 app.use('/api/course', courseRouter);
 
-// Health check endpoint
+// 5. Health check with CORS headers
 app.get('/', (req, res) => {
-  res.status(200).json({
+  res.setHeader('Access-Control-Allow-Origin', 'https://upskillify.vercel.app');
+  res.json({
     status: 'running',
     message: 'Upskillify LMS API',
-    version: '1.0.0',
     timestamp: new Date().toISOString(),
-    allowedOrigins
+    routes: {
+      courses: '/api/course/all',
+      webhooks: ['/clerk', '/stripe']
+    }
   });
 });
 
-// Start server
+// 6. Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`
   ################################################
   🚀 Server running on port: ${PORT}
   ################################################
-  Environment: ${process.env.NODE_ENV || 'development'}
-  CORS Allowed: ${allowedOrigins.join(', ')}
+  CORS Allowed Origins: 
+  - ${allowedOrigins.join('\n  - ')}
   `);
   
-  // Log CORS configuration
-  console.log('CORS Configuration:');
-  console.log('- Allowed Origins:', allowedOrigins);
-  console.log('- Allowed Methods:', ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']);
-  console.log('- Allowed Headers:', ['Content-Type', 'Authorization']);
+  // Test CORS configuration
+  console.log('Testing CORS configuration:');
+  allowedOrigins.forEach(origin => {
+    console.log(`- ${origin} => ${origin === 'https://upskillify.vercel.app' ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  });
 });
