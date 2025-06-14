@@ -23,35 +23,17 @@ export const AppContextProvider = (props) => {
     const [userData, setUserData] = useState(null)
 
     const fetchAllCourses = async () => {
-  try {
-    // Use fetch instead of axios to ensure CORS works properly
-    const response = await fetch(`${backendUrl}/api/course/all`, {
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+        try {
+            const { data } = await axios.get(backendUrl + '/api/course/all');
+            if (data.success) {
+                setAllCourses(data.courses)
+            } else {
+                toast.error(data.message)
+            }
+        } catch (error) {
+            toast.error(error.message)
+        }
     }
-    
-    const data = await response.json();
-    if (data.success) {
-      setAllCourses(data.courses);
-    } else {
-      toast.error(data.message);
-    }
-  } catch (error) {
-    console.error('Failed to fetch courses:', error);
-    toast.error('Failed to load courses. Please try again later.');
-  }
-};
-
-// Remove any authorization headers for public endpoints
-const fetchPublicData = async (url) => {
-  const response = await fetch(url, {
-    credentials: 'include'
-  });
-  return response.json();
-};
 
     const fetchUserData = async () => {
         if (!user) return;
