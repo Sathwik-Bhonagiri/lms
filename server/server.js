@@ -1,48 +1,39 @@
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db'); // adjust if needed
-const courseRoutes = require('./routes/courseRoutes');
-const userRoutes = require('./routes/userRoutes');
-
-dotenv.config();
-
+const express = require("express");
+const cors = require("cors");
 const app = express();
-connectDB(); // Connect to MongoDB
 
-// Middleware to parse JSON and cookies
+// CORS configuration
+const allowedOrigins = ["https://upskillify.vercel.app"];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
+// Handle preflight requests
+app.options("*", cors());
+
+// Other middlewares
 app.use(express.json());
-app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
-// Manually handle CORS for production deployment
-const allowedOrigins = ['https://upskillify.vercel.app'];
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-
-  next();
+// Example route
+app.get("/api/course/all", (req, res) => {
+  // If using authentication, check it here
+  res.json({
+    success: true,
+    courses: [/* your course data */],
+  });
 });
 
-// Routes
-app.use('/api/course', courseRoutes);
-app.use('/api/user', userRoutes);
-
-// Health check or default route
-app.get('/', (req, res) => {
-  res.send('API is running...');
-});
-
-module.exports = app;
+// Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
