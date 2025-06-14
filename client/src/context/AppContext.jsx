@@ -23,17 +23,19 @@ export const AppContextProvider = (props) => {
     const [userData, setUserData] = useState(null)
 
     const fetchAllCourses = async () => {
-        try {
-            const { data } = await axios.get(backendUrl + '/api/course/all');
-            if (data.success) {
-                setAllCourses(data.courses)
-            } else {
-                toast.error(data.message)
-            }
-        } catch (error) {
-            toast.error(error.message)
-        }
+  try {
+    const { data } = await axios.get(backendUrl + '/api/course/all', {
+      withCredentials: true // Add this line
+    });
+    if (data.success) {
+      setAllCourses(data.courses);
+    } else {
+      toast.error(data.message);
     }
+  } catch (error) {
+    toast.error(error.message);
+  }
+};
 
     const fetchUserData = async () => {
         if (!user) return;

@@ -1,22 +1,10 @@
-import express from 'express';
-import { getAllCourses, getCourseId } from '../controllers/courseController.js';
+import express from 'express'
+import { getAllCourses, getCourseId } from '../controllers/courseController.js'
 
-const router = express.Router();
 
-router.get('/all', async (req, res, next) => {
-  try {
-    await getAllCourses(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
+const courseRouter = express.Router()
 
-router.get('/:id', async (req, res, next) => {
-  try {
-    await getCourseId(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
+courseRouter.get('/all',getAllCourses)
+courseRouter.get('/:id',getCourseId)
 
-export default router;
+export default courseRouter;
